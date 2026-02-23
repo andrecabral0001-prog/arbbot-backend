@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>ArbBot — Spot × Futuros MEXC</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background:#07090d; color:#c8d0e8;
+  font-family:'Courier New',monospace; font-size:13px;
+  height:100vh; display:flex; flex-direction:column; overflow:hidden;
+}
+header {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 20px; height:46px; min-height:46px;
+  background:#090b10; border-bottom:1px solid #191d28; flex-shrink:0;
+}
+.logo { font-weight:900; font-size:17px; color:#fff; }
+.logo span { color:#a78bfa; }
+.hright { display:flex; align-items:center; gap:16px; font-size:11px; }
+.pill {
+  display:flex; align-items:center; gap:6px;
+  padding:3px 12px; border-radius:20px; font-weight:600; font-size:11px;
+}
+.pill.on  { background:rgba(0,230,118,.08); border:1px solid rgba(0,230,118,.3); color:#00e676; }
+.pill.off { background:rgba(255,61,87,.08); border:1px solid rgba(255,61,87,.3); color:#ff3d57; }
+.dot { width:7px; height:7px; border-radius:50%; }
+.dot.on  { background:#00e676; box-shadow:0 0 6px #00e676; animation:blink 1.4s infinite; }
+.dot.off { background:#ff3d57; }
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+
+.toolbar {
+  display:flex; align-items:center; gap:8px;
+  padding:7px 20px; background:#08090e;
+  border-bottom:1px solid #191d28; flex-shrink:0; flex-wrap:wrap;
+}
+#search {
+  background:#0d101a; border:1px solid #1e2333; color:#c8d0e8;
+  font-family:inherit; font-size:12px; padding:6px 12px;
+  border-radius:8px; outline:none; width:150px;
+}
+#search::placeholder { color:#2d3348; }
+.tab {
+  padding:5px 11px; border-radius:7px; border:1px solid #1e2333;
+  background:transparent; color:#4a5168; font-family:inherit;
+  font-size:11px; font-weight:600; cursor:pointer; transition:all .15s;
+}
+.tab.on { background:#7c3aed; border-color:#6d28d9; color:#fff; }
+.sort-btn {
+  padding:4px 9px; border-radius:6px; border:1px solid transparent;
+  background:transparent; color:#4a5168; font-family:inherit;
+  font-size:11px; cursor:pointer; transition:all .15s;
+}
+.sort-btn.on { background:#1e2333; border-color:#2d3550; color:#fff; }
+
+.tbl-wrap { flex:1; overflow:auto; }
+.tbl-wrap::-webkit-scrollbar{ width:4px; }
+.tbl-wrap::-webkit-scrollbar-thumb{ background:#1e2333; border-radius:2px; }
+table { width:100%; border-collapse:collapse; min-width:800px; }
+thead { position:sticky; top:0; background:#09090f; z-index:5; }
+th {
+  padding:9px 12px; font-size:10px; font-weight:600; color:#3d445c;
+  letter-spacing:1.5px; text-transform:uppercase;
+  border-bottom:1px solid #191d28; white-space:nowrap;
+}
+th.r{text-align:right} th.c{text-align:center} th.l{text-align:left}
+tr.row { border-bottom:1px solid #0e1018; cursor:pointer; transition:background .1s; }
+tr.row:hover { background:rgba(255,255,255,.02); }
+tr.row.entry { background:rgba(0,100,40,.13); }
+tr.row.entry:hover { background:rgba(0,100,40,.22); }
+tr.row.exit { background:rgba(80,60,0,.1); }
+tr.row.exit:hover { background:rgba(80,60,0,.18); }
+td { padding:8px 12px; white-space:nowrap; }
+td.r{text-align:right} td.c{text-align:center}
+.led { width:8px; height:8px; border-radius:50%; display:inline-block; margin-right:6px; vertical-align:middle; }
+.led.e { background:#00e676; box-shadow:0 0 5px #00e676; }
+.led.x { background:#ffd600; }
+.led.p { background:#1a5c35; }
+.led.n { background:#151821; }
+.red   { color:#ff3d57; font-weight:600; font-size:12px; }
+.grn   { color:#00e676; font-weight:600; font-size:12px; }
+.muted { color:#2d3348; }
+.badge {
+  display:inline-block; padding:2px 8px; border-radius:5px;
+  font-size:12px; font-weight:700;
+}
+.b-eg  { background:#00e676; color:#000; }
+.b-ep  { background:rgba(0,100,40,.3); color:#00e676; border:1px solid rgba(0,150,60,.4); }
+.b-en  { background:rgba(120,20,30,.2); color:#ff3d57; border:1px solid rgba(120,20,30,.4); }
+.b-xg  { background:#ffd600; color:#000; }
+.b-xp  { background:rgba(80,60,0,.3); color:#ffd600; border:1px solid rgba(100,80,0,.4); }
+.sig-e { color:#00e676; font-weight:700; font-size:11px; }
+.sig-x { color:#ffd600; font-weight:700; font-size:11px; }
+.sig-n { color:#1e2333; font-size:11px; }
+.btn-hot {
+  padding:5px 10px; border-radius:6px; border:none;
+  background:linear-gradient(135deg,#f97316,#ef4444);
+  color:#fff; font-family:inherit; font-size:11px; font-weight:700;
+  cursor:pointer; box-shadow:0 0 8px rgba(255,100,0,.3);
+}
+.btn-hot:hover { filter:brightness(1.15); }
+.btn-cold {
+  padding:5px 10px; border-radius:6px;
+  border:1px solid #252a3a; background:transparent;
+  color:#4a5168; font-family:inherit; font-size:11px; font-weight:700; cursor:pointer;
+}
+.btn-cold:hover { color:#fff; border-color:#4a5168; }
+footer {
+  padding:5px 20px; background:#09090f; border-top:1px solid #191d28;
+  font-size:10px; color:#2d3348; display:flex; gap:14px; flex-shrink:0;
+}
+/* MODAL */
+.overlay {
+  position:fixed; inset:0; background:rgba(0,0,0,.78); z-index:50;
+  display:flex; align-items:center; justify-content:center; padding:16px;
+}
+.modal {
+  background:#0d101a; border:1px solid #1e2333; border-radius:16px;
+  padding:24px; width:100%; max-width:400px;
+}
+.mhead { display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; }
+.msym  { font-size:22px; font-weight:900; color:#fff; }
+.msym span { color:#4a5168; }
+.mclose { background:transparent; border:none; color:#4a5168; font-size:20px; cursor:pointer; }
+.mgrid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px; }
+.mcard { background:#0a0c14; border:1px solid #1e2333; border-radius:10px; padding:14px; }
+.mclabel { font-size:10px; color:#4a5168; text-transform:uppercase; letter-spacing:1.5px; margin-bottom:10px; }
+.mrow { display:flex; justify-content:space-between; font-size:12px; margin-bottom:5px; }
+.mspread { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:16px; }
+.mscard { background:#0a0c14; border:1px solid #1e2333; border-radius:10px; padding:14px; text-align:center; }
+.mslabel { font-size:10px; color:#4a5168; text-transform:uppercase; letter-spacing:1.5px; margin-bottom:6px; }
+.msval { font-size:28px; font-weight:900; line-height:1; }
+.mbtn {
+  width:100%; padding:13px; border:none; border-radius:12px;
+  background:linear-gradient(135deg,#f97316,#ef4444); color:#fff;
+  font-family:inherit; font-size:14px; font-weight:900; cursor:pointer;
+}
+.mbtn:hover { filter:brightness(1.1); }
+.empty { text-align:center; padding:50px; color:#2d3348; font-size:14px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Arb<span>Bot</span> <small style="font-size:11px;color:#3d445c;font-weight:400">MEXC · Spot × Futuros</small></div>
+  <div class="hright">
+    <div class="pill off" id="pill"><div class="dot off" id="dot"></div><span id="ptxt">Carregando...</span></div>
+    <span style="color:#3d445c">Pares: <b style="color:#8892a8" id="cnt-pairs">0</b></span>
+    <span style="color:#00e676;font-weight:700">🟢 <span id="cnt-entry">0</span> entrar</span>
+    <span style="color:#ffd600;font-weight:700">🟡 <span id="cnt-exit">0</span> sair</span>
+    <span style="color:#3d445c;font-size:10px">Atualiza a cada <b style="color:#6b7490">15s</b></span>
+  </div>
+</header>
+
+<div class="toolbar">
+  <input id="search" placeholder="🔍 Buscar moeda..." oninput="renderTable()">
+  <div style="display:flex;gap:4px">
+    <button class="tab on"  data-tab="all"   onclick="setTab(this)">Todas (<span id="t-all">0</span>)</button>
+    <button class="tab"     data-tab="pos"   onclick="setTab(this)">Positivas (<span id="t-pos">0</span>)</button>
+    <button class="tab"     data-tab="entry" onclick="setTab(this)">🟢 Entrar (<span id="t-entry">0</span>)</button>
+    <button class="tab"     data-tab="exit"  onclick="setTab(this)">🟡 Sair (<span id="t-exit">0</span>)</button>
+  </div>
+  <div style="display:flex;gap:3px;margin-left:auto;align-items:center">
+    <span style="font-size:10px;color:#2d3348;margin-right:4px">Ordenar:</span>
+    <button class="sort-btn on" data-sort="entry" onclick="setSort(this)">% Entrada</button>
+    <button class="sort-btn"    data-sort="exit"  onclick="setSort(this)">% Saída</button>
+    <button class="sort-btn"    data-sort="name"  onclick="setSort(this)">Nome</button>
+  </div>
+</div>
+
+<div class="tbl-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th class="l" style="width:36px">#</th>
+        <th class="l">Moeda</th>
+        <th class="r">Spot ASK 🔴</th>
+        <th class="r">Fut BID 🟢</th>
+        <th class="c">% ENTRADA</th>
+        <th class="r">Spot BID 🟢</th>
+        <th class="r">Fut ASK 🔴</th>
+        <th class="c">% SAÍDA</th>
+        <th class="c">Sinal</th>
+        <th class="c">Ação</th>
+      </tr>
+    </thead>
+    <tbody id="tbody"></tbody>
+  </table>
+</div>
+
+<footer>
+  <span>Mostrando <b id="showing" style="color:#4a5168">0</b> pares</span>
+  <span>•</span>
+  <span>Entrada = (Fut BID − Spot ASK) ÷ Spot ASK × 100</span>
+  <span>•</span>
+  <span>Saída = (Spot BID − Fut ASK) ÷ Fut ASK × 100</span>
+</footer>
+
+<div class="overlay" id="modal" style="display:none" onclick="closeModal()">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="mhead">
+      <div class="msym" id="m-sym">—<span>/USDT</span></div>
+      <button class="mclose" onclick="closeModal()">✕</button>
+    </div>
+    <div class="mgrid">
+      <div class="mcard">
+        <div class="mclabel">Spot</div>
+        <div class="mrow"><span class="muted">ASK 🔴</span><span class="red" id="m-sask">—</span></div>
+        <div class="mrow"><span class="muted">BID 🟢</span><span class="grn" id="m-sbid">—</span></div>
+      </div>
+      <div class="mcard">
+        <div class="mclabel">Futuros</div>
+        <div class="mrow"><span class="muted">ASK 🔴</span><span class="red" id="m-fask">—</span></div>
+        <div class="mrow"><span class="muted">BID 🟢</span><span class="grn" id="m-fbid">—</span></div>
+      </div>
+    </div>
+    <div class="mspread">
+      <div class="mscard">
+        <div class="mslabel">% Entrada</div>
+        <div class="msval" id="m-en">—</div>
+        <div style="font-size:9px;color:#2d3348;margin-top:4px">Fut BID − Spot ASK</div>
+      </div>
+      <div class="mscard">
+        <div class="mslabel">% Saída</div>
+        <div class="msval" id="m-ex">—</div>
+        <div style="font-size:9px;color:#2d3348;margin-top:4px">Spot BID − Fut ASK</div>
+      </div>
+    </div>
+    <button class="mbtn" id="m-btn">⚡ ABRIR SPOT + FUTUROS NA MEXC</button>
+  </div>
+</div>
+
+<script>
+// ── CONFIG ────────────────────────────────────────────────────────────
+const SPOT_TICKER_URL    = "https://api.mexc.com/api/v3/ticker/bookTicker";
+const FUTURES_TICKER_URL = "https://contract.mexc.com/api/v1/contract/ticker";
+const INTERVAL_MS        = 15000; // atualiza a cada 15 segundos
+
+// ── ESTADO ────────────────────────────────────────────────────────────
+let data    = {};   // { BTC: { spotAsk, spotBid, futAsk, futBid, entrySpread, exitSpread } }
+let coins   = [];   // lista de símbolos com dados
+let tab     = "all";
+let sortBy  = "entry";
+let modalSym = null;
+let refreshTimer = null;
+
+// ── FORMAT ────────────────────────────────────────────────────────────
+function fmt(v) {
+  if (v == null) return "—";
+  if (v < 0.0001) return v.toFixed(8);
+  if (v < 0.01)   return v.toFixed(6);
+  if (v < 1)      return v.toFixed(5);
+  if (v < 100)    return v.toFixed(4);
+  return v.toFixed(2);
+}
+function pct(v) {
+  if (v == null) return "—";
+  return (v >= 0 ? "+" : "") + v.toFixed(3) + "%";
+}
+
+// ── BUSCAR PREÇOS ─────────────────────────────────────────────────────
+async function fetchPrices() {
+  setStatus(false, "Buscando preços...");
+  try {
+    // Buscar SPOT e FUTUROS em paralelo
+    const [spotRes, futRes] = await Promise.all([
+      fetch(SPOT_TICKER_URL).then(r => r.json()),
+      fetch(FUTURES_TICKER_URL).then(r => r.json()),
+    ]);
+
+    // Processar SPOT
+    // spotRes = array de { symbol, bidPrice, askPrice, bidQty, askQty }
+    const spotMap = {};
+    for (const s of spotRes) {
+      if (s.symbol && s.symbol.endsWith("USDT")) {
+        const coin = s.symbol.slice(0, -4);
+        spotMap[coin] = {
+          ask: parseFloat(s.askPrice),
+          bid: parseFloat(s.bidPrice),
+        };
+      }
+    }
+
+    // Processar FUTUROS
+    // futRes.data = array de { symbol, ask1, bid1, ... }
+    const futMap = {};
+    const futList = futRes.data || futRes;
+    for (const f of futList) {
+      if (f.symbol && f.symbol.endsWith("_USDT")) {
+        const coin = f.symbol.slice(0, -5);
+        futMap[coin] = {
+          ask: parseFloat(f.ask1 || f.ask),
+          bid: parseFloat(f.bid1 || f.bid),
+        };
+      }
+    }
+
+    // Combinar — só moedas com dados nos dois mercados
+    const newData = {};
+    const newCoins = [];
+    for (const coin of Object.keys(spotMap)) {
+      if (futMap[coin]) {
+        const sa = spotMap[coin].ask;
+        const sb = spotMap[coin].bid;
+        const fa = futMap[coin].ask;
+        const fb = futMap[coin].bid;
+        if (sa && sb && fa && fb && sa > 0 && fa > 0) {
+          const entry = (fb - sa) / sa * 100;
+          const exit_ = (sb - fa) / fa * 100;
+          newData[coin] = { spotAsk:sa, spotBid:sb, futAsk:fa, futBid:fb, entrySpread:entry, exitSpread:exit_ };
+          newCoins.push(coin);
+        }
+      }
+    }
+
+    data  = newData;
+    coins = newCoins.sort();
+    setStatus(true, "AO VIVO");
+    updateCounters();
+    renderTable();
+    if (modalSym && data[modalSym]) fillModal(modalSym);
+
+  } catch(e) {
+    setStatus(false, "Erro ao buscar — tentando novamente...");
+    console.error(e);
+  }
+
+  // Agendar próxima atualização
+  clearTimeout(refreshTimer);
+  refreshTimer = setTimeout(fetchPrices, INTERVAL_MS);
+}
+
+// ── STATUS ────────────────────────────────────────────────────────────
+function setStatus(on, msg) {
+  const pill = document.getElementById("pill");
+  const dot  = document.getElementById("dot");
+  pill.className = "pill " + (on ? "on" : "off");
+  dot.className  = "dot "  + (on ? "on" : "off");
+  document.getElementById("ptxt").textContent = msg;
+}
+
+// ── COUNTERS ──────────────────────────────────────────────────────────
+function updateCounters() {
+  const vals = Object.values(data);
+  const cEntry = vals.filter(d => d.entrySpread > 0.05).length;
+  const cExit  = vals.filter(d => d.exitSpread  > 0.02).length;
+  const cPos   = vals.filter(d => d.entrySpread > 0).length;
+  document.getElementById("cnt-pairs").textContent  = coins.length;
+  document.getElementById("cnt-entry").textContent  = cEntry;
+  document.getElementById("cnt-exit").textContent   = cExit;
+  document.getElementById("t-all").textContent      = coins.length;
+  document.getElementById("t-pos").textContent      = cPos;
+  document.getElementById("t-entry").textContent    = cEntry;
+  document.getElementById("t-exit").textContent     = cExit;
+}
+
+// ── RENDER TABELA ─────────────────────────────────────────────────────
+function renderTable() {
+  const q = document.getElementById("search").value.toUpperCase();
+
+  const rows = coins
+    .map(sym => ({ sym, ...data[sym] }))
+    .filter(r => {
+      if (q && !r.sym.includes(q)) return false;
+      const en = r.entrySpread;
+      const ex = r.exitSpread;
+      if (tab === "pos")   return en > 0;
+      if (tab === "entry") return en > 0.05;
+      if (tab === "exit")  return ex > 0.02;
+      return true;
+    })
+    .sort((a, b) => {
+      if (sortBy === "name")  return a.sym.localeCompare(b.sym);
+      if (sortBy === "exit")  return b.exitSpread  - a.exitSpread;
+      return b.entrySpread - a.entrySpread;
+    });
+
+  document.getElementById("showing").textContent = rows.length;
+
+  const tbody = document.getElementById("tbody");
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="10" class="empty">${coins.length === 0 ? "Carregando preços da MEXC..." : "Nenhuma moeda neste filtro"}</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = rows.map((r, i) => {
+    const en = r.entrySpread;
+    const ex = r.exitSpread;
+    const isEntry = en > 0.05;
+    const isExit  = ex > 0.02;
+    const isPos   = en > 0;
+
+    const rowCls  = isEntry ? "row entry" : isExit ? "row exit" : "row";
+    const ledCls  = isEntry ? "e" : isExit ? "x" : isPos ? "p" : "n";
+    const nameCls = isEntry ? "style='color:#fff;font-weight:700'" : isPos ? "style='color:#c8d0e8;font-weight:700'" : "style='color:#4a5168'";
+
+    const enBadge = isEntry
+      ? `<span class="badge b-eg">${pct(en)}</span>`
+      : isPos
+      ? `<span class="badge b-ep">${pct(en)}</span>`
+      : `<span class="badge b-en">${pct(en)}</span>`;
+
+    const exBadge = isExit
+      ? `<span class="badge b-xg">${pct(ex)}</span>`
+      : ex > 0
+      ? `<span class="badge b-xp">${pct(ex)}</span>`
+      : `<span class="badge b-en">${pct(ex)}</span>`;
+
+    const sig = isEntry
+      ? `<span class="sig-e">🟢 ENTRAR</span>`
+      : isExit
+      ? `<span class="sig-x">🟡 SAIR</span>`
+      : `<span class="sig-n">—</span>`;
+
+    const btn = isEntry
+      ? `<button class="btn-hot" onclick="event.stopPropagation();openBoth('${r.sym}')">⚡ AÇÃO</button>`
+      : `<button class="btn-cold" onclick="event.stopPropagation();openBoth('${r.sym}')">⚡ AÇÃO</button>`;
+
+    return `<tr class="${rowCls}" onclick="openModal('${r.sym}')">
+      <td style="color:#3d445c;font-size:11px">${i+1}</td>
+      <td><span class="led ${ledCls}"></span><span ${nameCls}>${r.sym}</span><span style="color:#2d3348;font-size:10px"> /USDT</span></td>
+      <td class="r red">${fmt(r.spotAsk)}</td>
+      <td class="r grn">${fmt(r.futBid)}</td>
+      <td class="c">${enBadge}</td>
+      <td class="r grn">${fmt(r.spotBid)}</td>
+      <td class="r red">${fmt(r.futAsk)}</td>
+      <td class="c">${exBadge}</td>
+      <td class="c">${sig}</td>
+      <td class="c">${btn}</td>
+    </tr>`;
+  }).join("");
+}
+
+// ── MODAL ─────────────────────────────────────────────────────────────
+function openModal(sym) {
+  const d = data[sym];
+  if (!d) return;
+  modalSym = sym;
+  fillModal(sym);
+  document.getElementById("modal").style.display = "flex";
+}
+function fillModal(sym) {
+  const d = data[sym];
+  document.getElementById("m-sym").innerHTML  = sym + "<span>/USDT</span>";
+  document.getElementById("m-sask").textContent = fmt(d.spotAsk);
+  document.getElementById("m-sbid").textContent = fmt(d.spotBid);
+  document.getElementById("m-fask").textContent = fmt(d.futAsk);
+  document.getElementById("m-fbid").textContent = fmt(d.futBid);
+  const enEl = document.getElementById("m-en");
+  const exEl = document.getElementById("m-ex");
+  enEl.textContent = pct(d.entrySpread);
+  enEl.style.color = d.entrySpread > 0.05 ? "#00e676" : d.entrySpread > 0 ? "#1a5c35" : "#ff3d57";
+  exEl.textContent = pct(d.exitSpread);
+  exEl.style.color = d.exitSpread > 0.02 ? "#ffd600" : d.exitSpread > 0 ? "#5c4a00" : "#ff3d57";
+  document.getElementById("m-btn").onclick = () => { openBoth(sym); closeModal(); };
+}
+function closeModal() {
+  document.getElementById("modal").style.display = "none";
+  modalSym = null;
+}
+
+// ── ABRIR AS DUAS JANELAS ─────────────────────────────────────────────
+function openBoth(sym) {
+  window.open(`https://www.mexc.com/pt-PT/exchange/${sym}_USDT`,  "spot_w", "width=1100,height=720,left=0,top=50");
+  setTimeout(() =>
+    window.open(`https://futures.mexc.com/exchange/${sym}_USDT`, "fut_w", "width=1100,height=720,left=1110,top=50")
+  , 300);
+}
+
+// ── FILTROS / SORT ────────────────────────────────────────────────────
+function setTab(btn) {
+  document.querySelectorAll(".tab").forEach(b => b.classList.remove("on"));
+  btn.classList.add("on");
+  tab = btn.dataset.tab;
+  renderTable();
+}
+function setSort(btn) {
+  document.querySelectorAll(".sort-btn").forEach(b => b.classList.remove("on"));
+  btn.classList.add("on");
+  sortBy = btn.dataset.sort;
+  renderTable();
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────
+fetchPrices();
+</script>
+</body>
+</html>
